@@ -1,0 +1,92 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: build-and-deploy-backend
+spec:
+  params:
+    - name: deployment-name
+      type: string
+      description: name of the deployment to be patched
+    - name: git-url
+      type: string
+      description: url of the git repo for the code of deployment
+    - name: git-revision
+      type: string
+      description: revision to be used from repo of the code for deployment
+      default: "oidc"
+    - name: IMAGE-WEB
+      type: string
+      description: image to be build from the code
+    - name: IMAGE-REST
+      type: string
+      description: image to be build from the code
+  workspaces:
+    - name: git-source
+  tasks:
+    - name: deploy-test-database
+      taskRef:
+        name: deploy-test-postgresql
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      runAfter:
+        - deploy-test-database
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: deleteExisting
+          value: 'true'
+      workspaces:
+        - name: output
+          workspace: git-source
+
+    - name: build-expence-backend
+      taskRef:
+        name: maven
+      params:
+        - name: contextDir
+          value: .
+        - name: nativeFlag
+          value: '-Pnative'
+      workspaces:
+        - name: source
+          workspace: git-source
+      runAfter:
+        - fetch-repository
+
+    - name: build-expence-backend-image-deploy
+      taskRef:
+        name: buildah
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE-REST)
+        - name: TLSVERIFY
+          value: "false"
+        - name: DOCKERFILE
+          value: "$(workspaces.source.path)/src/main/docker/Dockerfile.native"
+        - name: SUBFOLDER
+          value: "."
+      workspaces:
+      - name: source
+        workspace: git-source
+      runAfter:
+        - build-expence-backend
+
+    - name: build-expence-backend-deploy
+      taskRef:
+        name: deploy-application
+      runAfter:
+        - build-expence-backend-image
+      params:
+        - name: contextDir
+          value: .
+        - name: yamlFile
+          value: 'src/main/ocp/expences-backend.yaml'
+        - name: IMAGE
+          value: $(params.IMAGE-REST)
+      workspaces:
+        - name: source
+          workspace: git-source

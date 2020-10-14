@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: deploy-backend
+spec:
+  params:
+    - name: IMAGE-WEB
+      type: string
+      description: image to be build from the code
+    - name: IMAGE-REST
+      type: string
+      description: image to be build from the code
+  workspaces:
+    - name: git-source
+  tasks:
+    - name: build-expence-backend-deploy
+      taskRef:
+        name: deploy-application-with-oc
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE-REST)

@@ -1,0 +1,29 @@
+---
+
+# deploy for each pipeline run posgresql for camel tests only
+# and destroy it after
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy-test-postgresql
+spec:
+  params:
+    - name: postgresql-image
+      type: string
+      description: The postgresql image to deploy
+      default: registry.redhat.io/rhel8/postgresql-10
+  steps:
+    - name: deploy-app
+      image: quay.io/openshift/origin-cli:latest
+      command: ["/bin/bash", "-c"]
+      args:
+        - |-
+          oc delete secrets/postgresql-test
+          oc delete all -l app=postgresql-ephemeral 
+          
+          oc new-app --template openshift/postgresql-ephemeral \
+              --param POSTGRESQL_USER=quarkus \
+              --param POSTGRESQL_PASSWORD=quarkus \
+              --param POSTGRESQL_DATABASE=quarkus-test \
+              --param DATABASE_SERVICE_NAME=postgresql-test
+             

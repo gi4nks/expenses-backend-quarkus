@@ -1,0 +1,22 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: backend-build-run
+spec:
+  pipelineRef:
+    name: build-and-deploy-backend
+  params:
+    - name: git-url
+      value: 'https://github.com/gi4nks/expenses-backend-quarkus.git'
+    - name: git-revision
+      value: 'oidc'
+    - name: IMAGE-WEB
+      value: 'image-registry.openshift-image-registry.svc:5000/glupo-playground/bell-cli:latest'
+    - name: IMAGE-REST
+      value: 'image-registry.openshift-image-registry.svc:5000/glupo-playground/expenses-backend-quarkus:latest'
+    - name: 'deployment-name'
+      value: 'bell-rest'
+  workspaces:
+    - name: git-source
+      persistentVolumeClaim:
+        claimName: source-pvc
